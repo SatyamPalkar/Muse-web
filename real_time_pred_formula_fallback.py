@@ -191,4 +191,4 @@ if __name__ == "__main__":
         plt.show()
         server.serve_forever()
     except KeyboardInterrupt:
-        print("🛑 Exiting Real-Time Predictor")
+        print("🛑 Exiting Real-Time Predictor") 
