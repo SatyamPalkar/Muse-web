@@ -1,0 +1,6 @@
+python-osc
+playsound
+matplotlib
+numpy
+torch
+scikit-learn

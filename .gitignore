@@ -1,0 +1,7 @@
+Lib/
+*.dll
+*.lib
+env/
+venv/
+__pycache__/
+*.pyc
