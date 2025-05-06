@@ -1,7 +1,7 @@
-python-osc
+python-osc==1.7.4
+websockets==12.0
 playsound
 matplotlib
 numpy
 torch
 scikit-learn
-websockets
