@@ -1,23 +1,24 @@
-# 🧠 MindMonitorPython
+# 🧠 Muse EEG Real-Time Emotion Detection
 
 Real-time EEG-based Emotion & Stress Classification using Muse headband data via OSC (Open Sound Control).  
 This project uses PyTorch, SciPy, and real-time signal processing to classify mental states such as **Relaxed**, **Focused**, **Stressed**, and **Drowsy**.
 
+A real-time brainwave emotion classification system built with:
+
+- **Muse 2 + Mind Monitor** for EEG signal streaming
+- **Python (OSC + WebSocket)** for signal processing + emotion classification
+- **Next.js (Vercel)** as the interactive frontend dashboard
+- **Render** for backend WebSocket server hosting
+
+## 🚀 Live Frontend
+
+🌐 [https://v0-new-project-wum9kvc3eqx.vercel.app](https://v0-new-project-wum9kvc3eqx.vercel.app)
+
+## 📡 WebSocket Endpoint
+
+🧩 `wss://muse-eeg-backend.onrender.com` (automatically receives and broadcasts real-time classified emotional state)
+
 ---
 
-## 🚀 Features
+## 📦 Project Structure
 
-- 🎧 Live EEG data stream from Muse (via OSC)
-- 🧠 Emotion & Stress classification using deep learning (PyTorch)
-- 📈 Real-time Matplotlib visualizations
-- 🔊 Audio feedback with `playsound`
-- 🔌 Easy integration with Mind Monitor app
-
----
-
-## 🛠️ Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/SatyamPalkar/MindMonitorPython.git
-   cd MindMonitorPython
