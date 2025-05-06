@@ -1,57 +1,61 @@
+
 "use client"
 
 import React, { createContext, useContext, useEffect, useState } from "react"
 
+interface EEGData {
+  emotion: string
+  timestamp: number
+}
+
 interface WebSocketContextType {
-  ws: WebSocket | null
-  emotion: string | null
+  connected: boolean
+  currentData: EEGData | null
 }
 
 const WebSocketContext = createContext<WebSocketContextType>({
-  ws: null,
-  emotion: null,
+  connected: false,
+  currentData: null,
 })
 
 export const useWebSocket = () => useContext(WebSocketContext)
 
 export const WebSocketProvider = ({
   children,
-  socketUrl = "wss://muse-eeg-backend.onrender.com", // your backend WebSocket endpoint
 }: {
   children: React.ReactNode
-  socketUrl?: string
 }) => {
-  const [ws, setWs] = useState<WebSocket | null>(null)
-  const [emotion, setEmotion] = useState<string | null>(null)
+  const [connected, setConnected] = useState(false)
+  const [currentData, setCurrentData] = useState<EEGData | null>(null)
 
   useEffect(() => {
-    const socket = new WebSocket(socketUrl)
+    const socket = new WebSocket("wss://muse-eeg-backend.onrender.com")
 
     socket.onopen = () => {
-      console.log("✅ WebSocket connected")
+      console.log("✅ Connected to EEG WebSocket")
+      setConnected(true)
     }
 
     socket.onmessage = (event) => {
-      console.log("🎯 Emotion:", event.data)
-      setEmotion(event.data)
-    }
-
-    socket.onerror = (error) => {
-      console.error("❌ WebSocket error:", error)
+      const emotion = event.data
+      setCurrentData({
+        emotion,
+        timestamp: Date.now(),
+      })
     }
 
     socket.onclose = () => {
-      console.log("❗ WebSocket disconnected")
+      console.log("❌ WebSocket disconnected")
+      setConnected(false)
     }
 
-    setWs(socket)
     return () => {
       socket.close()
     }
-  }, [socketUrl])
+  }, [])
 
   return (
-    <WebSocketContext.Provider value={{ ws, emotion }}>
+    <WebSocketContext.Provider value={{ connected, currentData }}>
       {children}
     </WebSocketContext.Provider>
   )
