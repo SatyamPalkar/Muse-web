@@ -69,10 +69,13 @@ def start_osc_server(ip="0.0.0.0", port=5000):
 
 # Run both OSC + WebSocket server
 def main():
+    port = int(os.environ.get("PORT", 10000))  # Render injects the PORT variable
+
     threading.Thread(target=start_osc_server, daemon=True).start()
-    print("WebSocket server starting on ws://0.0.0.0:8765")
+    print(f"WebSocket server starting on ws://0.0.0.0:{port}")
+    
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(websockets.serve(ws_handler, "0.0.0.0", 10000))
+    loop.run_until_complete(websockets.serve(ws_handler, "0.0.0.0", port))
     loop.run_until_complete(broadcast_emotion())
     loop.run_forever()
 
