@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: muse-eeg-backend
+    env: python
+    plan: free
+    buildCommand: ""
+    startCommand: python muse_realtime_ws_backend.py
