@@ -72,7 +72,7 @@ def main():
     threading.Thread(target=start_osc_server, daemon=True).start()
     print("WebSocket server starting on ws://0.0.0.0:8765")
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(websockets.serve(ws_handler, "0.0.0.0", 8765))
+    loop.run_until_complete(websockets.serve(ws_handler, "0.0.0.0", 10000))
     loop.run_until_complete(broadcast_emotion())
     loop.run_forever()
 
