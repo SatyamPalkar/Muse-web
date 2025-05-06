@@ -18,9 +18,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} bg-black text-white`}>
-        <WebSocketProvider>{children}</WebSocketProvider>
+    <html lang="en">
+      <body>
+      <WebSocketProvider socketUrl="wss://muse-eeg-backend.onrender.com">
+        {children}
+      </WebSocketProvider>
       </body>
     </html>
   )
