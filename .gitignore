@@ -63,3 +63,21 @@ package-lock.json
 # Test files
 test_*.py
 debug_*.py
+
+# Heavy model files
+*.pth
+*.whl
+*.tar.gz
+*.zip
+*.bin
+*.exe
+
+# Python package distributions
+eeg_stress_detector/dist/
+eeg_stress_detector/src/*.egg-info/
+
+# Development and testing files
+test-websocket.html
+simple_realtime_bridge.py
+realtime_bridge.py
+clean_data_bridge.py
