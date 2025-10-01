@@ -13,6 +13,14 @@ A comprehensive real-time EEG stress detection system with advanced machine lear
 - **Docker Deployment**: Production-ready containerized deployment
 - **API Documentation**: Complete REST API with Swagger documentation
 
+## 📊 Dashboard Overview
+
+Here's what the EEG Dashboard looks like when running:
+
+![EEG Dashboard - Real-time Brain Activity Monitoring](dashboard-screenshot.png)
+
+*The dashboard displays real-time EEG data with brainwave frequency charts, stress level analysis, session management, and AI-powered recommendations. The interface shows connection status, live metrics, and interactive visualizations for monitoring brain activity.*
+
 ## 🚀 Quick Start
 
 ### Option 1: Development Mode (Recommended)
