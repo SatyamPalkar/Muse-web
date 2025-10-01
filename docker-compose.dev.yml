@@ -1,0 +1,45 @@
+version: '3.8'
+
+# Development override for docker-compose.yml
+services:
+  eeg-api:
+    build:
+      context: .
+      target: backend
+    environment:
+      - PYTHONPATH=/app
+      - EEG_MODE=realtime
+      - DEBUG=true
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: python eeg_api_server.py --port 8001 --mode realtime --host 0.0.0.0
+    ports:
+      - "8001:8001"
+      - "8000:8000"
+    networks:
+      - eeg-network
+
+  frontend:
+    build:
+      context: .
+      target: frontend-builder
+    environment:
+      - NODE_ENV=development
+      - EEG_API_URL=http://localhost:8001
+      - USE_MOCK_EEG=true
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      - eeg-api
+    networks:
+      - eeg-network
+
+networks:
+  eeg-network:
+    driver: bridge

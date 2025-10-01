@@ -16,9 +16,16 @@ import {
   Target,
   BarChart3,
   Home,
-  Settings
+  Settings,
+  Wifi,
+  WifiOff,
+  Play,
+  Square,
+  RefreshCw
 } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts"
+import { useEEGData } from "@/hooks/useEEGData"
+import { useSessionManagement } from "@/hooks/useSessionManagement"
 
 // Mock data for demonstration
 const mockEEGData = [
@@ -38,25 +45,75 @@ interface StressMetrics {
 }
 
 export default function DashboardPage() {
-  const [isConnected, setIsConnected] = useState(false)
-  const [currentMetrics, setCurrentMetrics] = useState<StressMetrics>({
-    level: "Moderate Stress",
-    confidence: 0.85,
-    trend: "stable",
-    betaAlpha: 1.2,
-    recommendations: [
-      "Consider taking a short break",
-      "Practice deep breathing exercises",
-      "Adjust your environment lighting"
-    ]
-  })
+  // Real-time EEG data from WebSocket
+  const { 
+    realtimeData, 
+    sessionData, 
+    connectionStatus, 
+    isConnected,
+    sendCommand 
+  } = useEEGData()
 
-  const [sessionStats, setSessionStats] = useState({
-    duration: "05:42",
-    samples: 342,
-    avgStress: 0.42,
-    peakStress: 0.78
-  })
+  // Session management
+  const {
+    sessionStatus,
+    sessionResults,
+    startSession,
+    stopSession,
+    isLoading: sessionLoading,
+    isActive: sessionActive,
+    progress,
+    timeRemaining
+  } = useSessionManagement()
+
+  // Local state for UI
+  const [eegHistory, setEegHistory] = useState<Array<{
+    time: string
+    theta: number
+    alpha: number
+    beta: number
+    gamma: number
+    delta: number
+    stress: number
+  }>>([])
+
+  // Update EEG history when new data arrives
+  useEffect(() => {
+    if (realtimeData) {
+      const newDataPoint = {
+        time: new Date(realtimeData.timestamp).toLocaleTimeString(),
+        theta: realtimeData.stress_indicators.rel_theta * 100 || 15,
+        alpha: realtimeData.stress_indicators.rel_alpha * 100 || 25,
+        beta: realtimeData.stress_indicators.rel_beta * 100 || 20,
+        gamma: realtimeData.stress_indicators.rel_gamma * 100 || 8,
+        delta: 20, // Default delta
+        stress: realtimeData.overall_stress || 0.4
+      }
+      
+      setEegHistory(prev => {
+        const updated = [...prev, newDataPoint]
+        // Keep only last 20 data points for performance
+        return updated.slice(-20)
+      })
+    }
+  }, [realtimeData])
+
+  // Current metrics from real-time data or defaults
+  const currentMetrics = {
+    level: realtimeData?.stress_level || "Unknown",
+    confidence: realtimeData?.confidence || 0,
+    trend: realtimeData?.temporal_trend?.toLowerCase() || "stable",
+    betaAlpha: realtimeData?.stress_indicators?.beta_alpha_ratio || 1.0,
+    recommendations: realtimeData?.recommendations || ["Collecting data..."]
+  }
+
+  // Session stats from real-time data or defaults
+  const sessionStats = {
+    duration: sessionActive ? `${Math.floor(timeRemaining / 60)}:${String(Math.floor(timeRemaining % 60)).padStart(2, '0')}` : "00:00",
+    samples: sessionData?.samples_collected || sessionStatus.samples_collected || 0,
+    avgStress: realtimeData?.overall_stress || 0,
+    peakStress: Math.max(...eegHistory.map(d => d.stress), 0)
+  }
 
   const getStressColor = (level: string) => {
     if (level.includes("Very High") || level.includes("High")) return "bg-red-500"
@@ -89,9 +146,45 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant={isConnected ? "default" : "destructive"}>
-              {isConnected ? "Connected" : "Disconnected"}
-            </Badge>
+            {/* Connection Status */}
+            <div className="flex items-center gap-2">
+              {isConnected ? (
+                <Wifi className="h-4 w-4 text-green-500" />
+              ) : connectionStatus.reconnecting ? (
+                <RefreshCw className="h-4 w-4 text-yellow-500 animate-spin" />
+              ) : (
+                <WifiOff className="h-4 w-4 text-red-500" />
+              )}
+              <Badge variant={isConnected ? "default" : "destructive"}>
+                {isConnected ? "Connected" : connectionStatus.reconnecting ? "Reconnecting" : "Disconnected"}
+              </Badge>
+            </div>
+            
+            {/* Session Controls */}
+            <div className="flex items-center gap-2">
+              {sessionActive ? (
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={stopSession}
+                  disabled={sessionLoading}
+                >
+                  <Square className="h-4 w-4 mr-1" />
+                  Stop Session
+                </Button>
+              ) : (
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={() => startSession({ duration: 120 })}
+                  disabled={sessionLoading || !isConnected}
+                >
+                  <Play className="h-4 w-4 mr-1" />
+                  Start Session
+                </Button>
+              )}
+            </div>
+            
             <Button variant="outline" size="icon">
               <Settings className="h-4 w-4" />
             </Button>
@@ -172,18 +265,28 @@ export default function DashboardPage() {
                   <CardDescription>Real-time frequency band powers</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={mockEEGData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="time" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="theta" stroke="#8884d8" strokeWidth={2} name="Theta" />
-                      <Line type="monotone" dataKey="alpha" stroke="#82ca9d" strokeWidth={2} name="Alpha" />
-                      <Line type="monotone" dataKey="beta" stroke="#ffc658" strokeWidth={2} name="Beta" />
-                      <Line type="monotone" dataKey="gamma" stroke="#ff7300" strokeWidth={2} name="Gamma" />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {eegHistory.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={eegHistory}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="time" />
+                        <YAxis />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="theta" stroke="#8884d8" strokeWidth={2} name="Theta" />
+                        <Line type="monotone" dataKey="alpha" stroke="#82ca9d" strokeWidth={2} name="Alpha" />
+                        <Line type="monotone" dataKey="beta" stroke="#ffc658" strokeWidth={2} name="Beta" />
+                        <Line type="monotone" dataKey="gamma" stroke="#ff7300" strokeWidth={2} name="Gamma" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                      <div className="text-center">
+                        <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Waiting for EEG data...</p>
+                        <p className="text-sm">Connect your Muse headband to see real-time data</p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -194,21 +297,31 @@ export default function DashboardPage() {
                   <CardDescription>Stress level over time</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={mockEEGData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="time" />
-                      <YAxis domain={[0, 1]} />
-                      <Tooltip />
-                      <Area 
-                        type="monotone" 
-                        dataKey="stress" 
-                        stroke="#ef4444" 
-                        fill="#ef444420"
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {eegHistory.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <AreaChart data={eegHistory}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="time" />
+                        <YAxis domain={[0, 1]} />
+                        <Tooltip />
+                        <Area 
+                          type="monotone" 
+                          dataKey="stress" 
+                          stroke="#ef4444" 
+                          fill="#ef444420"
+                          strokeWidth={2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                      <div className="text-center">
+                        <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No stress data yet</p>
+                        <p className="text-sm">Start a session to see stress patterns</p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -233,63 +346,87 @@ export default function DashboardPage() {
           </TabsContent>
 
           <TabsContent value="session" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Session Progress */}
+            {sessionActive && (
               <Card>
                 <CardHeader>
-                  <CardTitle>30-Second Analysis</CardTitle>
-                  <CardDescription>Short-term assessment</CardDescription>
+                  <CardTitle>Session in Progress</CardTitle>
+                  <CardDescription>Current session analysis</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div className="text-lg font-semibold">Light Stress</div>
-                    <div className="text-sm text-muted-foreground">Confidence: 76%</div>
-                    <Progress value={76} className="mt-2" />
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span>Progress</span>
+                      <span>{progress.toFixed(1)}%</span>
+                    </div>
+                    <Progress value={progress} className="w-full" />
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold">{sessionStats.samples}</div>
+                        <div className="text-sm text-muted-foreground">Samples</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold">{sessionStats.duration}</div>
+                        <div className="text-sm text-muted-foreground">Remaining</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold">{(sessionStats.avgStress * 100).toFixed(1)}%</div>
+                        <div className="text-sm text-muted-foreground">Avg Stress</div>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
+            )}
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>60-Second Analysis</CardTitle>
-                  <CardDescription>Medium-term assessment</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="text-lg font-semibold">Moderate Stress</div>
-                    <div className="text-sm text-muted-foreground">Confidence: 84%</div>
-                    <Progress value={84} className="mt-2" />
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Session Results */}
+            {Object.keys(sessionResults).length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(sessionResults).map(([window, result]) => (
+                  <Card key={window}>
+                    <CardHeader>
+                      <CardTitle>{result.window_seconds}-Second Analysis</CardTitle>
+                      <CardDescription>
+                        {window === "30" ? "Short-term assessment" :
+                         window === "60" ? "Medium-term assessment" :
+                         window === "90" ? "Extended assessment" :
+                         "Comprehensive assessment"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="text-lg font-semibold">{result.stress_level}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Confidence: {(result.confidence * 100).toFixed(1)}%
+                        </div>
+                        <Progress value={result.confidence * 100} className="mt-2" />
+                        <div className="text-xs text-muted-foreground mt-2">
+                          {result.sample_count} samples • Beta/Alpha: {result.beta_alpha_ratio.toFixed(2)}
+                        </div>
+                        {result.evidence.length > 0 && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {result.evidence[0]}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
 
+            {/* No Session Data */}
+            {!sessionActive && Object.keys(sessionResults).length === 0 && (
               <Card>
-                <CardHeader>
-                  <CardTitle>90-Second Analysis</CardTitle>
-                  <CardDescription>Extended assessment</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="text-lg font-semibold">Moderate Stress</div>
-                    <div className="text-sm text-muted-foreground">Confidence: 89%</div>
-                    <Progress value={89} className="mt-2" />
+                <CardContent className="flex items-center justify-center py-8">
+                  <div className="text-center text-muted-foreground">
+                    <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No session data available</p>
+                    <p className="text-sm">Start a session to see analysis results</p>
                   </div>
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>120-Second Analysis</CardTitle>
-                  <CardDescription>Comprehensive assessment</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="text-lg font-semibold">Mixed State</div>
-                    <div className="text-sm text-muted-foreground">Confidence: 92%</div>
-                    <Progress value={92} className="mt-2" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            )}
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">
