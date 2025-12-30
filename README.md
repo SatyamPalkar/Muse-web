@@ -109,9 +109,17 @@ python master_eeg_analyzer.py --mode demo
 
 ## 🖥️ Dashboard Features
 
+<!-- Uncomment when you add the dashboard screenshot:
 ![EEG Dashboard](docs/images/dashboard.png)
+-->
 
 *Real-time EEG stress detection dashboard with live brainwave visualization*
+
+The dashboard provides a comprehensive view of your brain activity with:
+- **Real-time stress monitoring** with confidence levels
+- **Live brainwave visualization** (Theta, Alpha, Beta, Gamma, Delta)
+- **Stress timeline** showing progression over time
+- **AI-powered recommendations** based on your mental state
 
 ### **Home Page** (`/`)
 - System status overview
