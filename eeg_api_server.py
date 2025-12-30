@@ -21,6 +21,8 @@ from typing import Dict, List, Optional, Any
 from threading import Thread, Event
 import signal
 import uvicorn
+import time
+import numpy as np
 
 # FastAPI and WebSocket imports
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
@@ -93,9 +95,16 @@ class EEGAPIServer:
         # Background tasks
         self.background_task = None
         self.stop_event = Event()
+        self.demo_running = False
+        self.demo_thread = None
         
         # Setup routes
         self._setup_routes()
+        
+        # Setup startup event to start background tasks
+        @self.app.on_event("startup")
+        async def startup_event():
+            await self.start_background_tasks()
         
         # Setup signal handlers
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -381,17 +390,31 @@ class EEGAPIServer:
                         if len(self.analyzer.realtime_buffer) >= 5:
                             metrics = self.analyzer.analyze_realtime()
                             
+                            # Convert numpy types to native Python types for JSON serialization
+                            def convert_to_native(obj):
+                                if isinstance(obj, (np.integer, np.floating)):
+                                    return float(obj)
+                                elif isinstance(obj, np.ndarray):
+                                    return obj.tolist()
+                                elif isinstance(obj, dict):
+                                    return {k: convert_to_native(v) for k, v in obj.items()}
+                                elif isinstance(obj, list):
+                                    return [convert_to_native(item) for item in obj]
+                                return obj
+                            
+                            stress_indicators = convert_to_native(metrics.stress_indicators)
+                            
                             data = {
                                 "type": "realtime_analysis",
                                 "data": {
                                     "timestamp": datetime.now().isoformat(),
                                     "stress_level": metrics.stress_level,
-                                    "confidence": metrics.confidence,
-                                    "overall_stress": metrics.overall_stress,
-                                    "arousal_level": metrics.arousal_level,
+                                    "confidence": float(metrics.confidence),
+                                    "overall_stress": float(metrics.overall_stress),
+                                    "arousal_level": float(metrics.arousal_level),
                                     "temporal_trend": metrics.temporal_trend,
                                     "recommendations": metrics.recommendations,
-                                    "stress_indicators": metrics.stress_indicators,
+                                    "stress_indicators": stress_indicators,
                                     "sample_count": len(self.analyzer.realtime_buffer)
                                 }
                             }
@@ -431,7 +454,10 @@ class EEGAPIServer:
     
     async def start_background_tasks(self):
         """Start background tasks for OSC and data processing."""
-        if self.mode == "realtime":
+        if self.mode == "demo":
+            # Start demo data generation
+            self.start_demo_mode()
+        elif self.mode == "realtime":
             # Start OSC server in background for real-time mode
             def run_osc():
                 try:
@@ -442,6 +468,55 @@ class EEGAPIServer:
             osc_thread = Thread(target=run_osc, daemon=True)
             osc_thread.start()
             print(f"🎧 OSC server started on port {self.analyzer.osc_port}")
+    
+    def start_demo_mode(self):
+        """Start demo mode with simulated EEG data."""
+        if self.demo_running:
+            return
+        
+        self.demo_running = True
+        print("🧪 Starting demo mode with simulated EEG data...")
+        
+        def generate_demo_data():
+            """Generate continuous demo EEG data with changing patterns."""
+            states = [
+                ("Relaxed", 15, 40, 18, 6, 28, 30),
+                ("Focusing", 12, 30, 30, 10, 22, 25),
+                ("Stressed", 10, 20, 45, 18, 15, 30),
+                ("Calming", 14, 35, 25, 8, 25, 25),
+            ]
+            
+            state_index = 0
+            sample_in_state = 0
+            
+            while self.demo_running and not self.stop_event.is_set():
+                # Cycle through states
+                state_name, t_base, a_base, b_base, g_base, d_base, duration = states[state_index]
+                
+                # Generate sample with realistic noise
+                theta = max(1, np.random.normal(t_base, 2))
+                alpha = max(1, np.random.normal(a_base, 4))
+                beta = max(1, np.random.normal(b_base, 3))
+                gamma = max(1, np.random.normal(g_base, 2))
+                delta = max(1, np.random.normal(d_base, 3))
+                
+                # Add sample to analyzer
+                self.analyzer.add_eeg_sample(theta, alpha, beta, gamma, delta)
+                
+                sample_in_state += 1
+                
+                # Move to next state after duration
+                if sample_in_state >= duration:
+                    state_index = (state_index + 1) % len(states)
+                    sample_in_state = 0
+                    print(f"📊 Demo: Transitioning to {states[state_index][0]} state...")
+                
+                # Sleep to simulate real-time data (1 sample per second)
+                time.sleep(1.0)
+        
+        self.demo_thread = Thread(target=generate_demo_data, daemon=True)
+        self.demo_thread.start()
+        print("✅ Demo mode active - generating simulated EEG data")
     
     def run(self, host: str = "0.0.0.0"):
         """Run the FastAPI server."""
@@ -459,10 +534,7 @@ class EEGAPIServer:
         print(f"  • WebSocket: ws://{host}:{self.port}/ws")
         print("=" * 70)
         
-        # Start background tasks
-        asyncio.create_task(self.start_background_tasks())
-        
-        # Run server
+        # Run server (background tasks will start via startup event)
         uvicorn.run(
             self.app,
             host=host,
@@ -490,9 +562,9 @@ def main():
     
     parser.add_argument(
         "--mode",
-        choices=["realtime", "session"],
+        choices=["realtime", "session", "demo"],
         default="realtime",
-        help="Analyzer mode (default: realtime)"
+        help="Analyzer mode: realtime, session, or demo (default: realtime)"
     )
     
     parser.add_argument(
