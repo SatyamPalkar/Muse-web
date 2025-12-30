@@ -109,6 +109,10 @@ python master_eeg_analyzer.py --mode demo
 
 ## 🖥️ Dashboard Features
 
+![EEG Dashboard](docs/images/dashboard.png)
+
+*Real-time EEG stress detection dashboard with live brainwave visualization*
+
 ### **Home Page** (`/`)
 - System status overview
 - Connection monitoring
