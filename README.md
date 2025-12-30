@@ -109,9 +109,12 @@ python master_eeg_analyzer.py --mode demo
 
 ## 🖥️ Dashboard Features
 
-<!-- Uncomment when you add the dashboard screenshot:
-![EEG Dashboard](docs/images/dashboard.png)
--->
+### Dashboard Demo Video
+
+<video width="100%" controls>
+  <source src="docs/images/Screen Recording 2025-12-30 at 5.03.25 PM.mov" type="video/quicktime">
+  Your browser does not support the video tag. [Download the video](docs/images/Screen Recording 2025-12-30 at 5.03.25 PM.mov)
+</video>
 
 *Real-time EEG stress detection dashboard with live brainwave visualization*
 
