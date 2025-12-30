@@ -109,16 +109,11 @@ python master_eeg_analyzer.py --mode demo
 
 ## 🖥️ Dashboard Features
 
-### Dashboard Demo Video
+### Dashboard Demo
 
-🎥 **[📹 Watch Dashboard Demo](docs/images/Screen%20Recording%202025-12-30%20at%205.03.25%20PM.mov)** (Click to download/view)
+![Dashboard Demo](docs/images/dashboard-demo.gif)
 
 *Screen recording demonstrating the real-time EEG dashboard in action, including live brainwave visualization and stress monitoring.*
-
-**💡 Tip:** For inline display on GitHub, convert to an animated GIF:
-- Use [CloudConvert](https://cloudconvert.com/mov-to-gif) or similar tool
-- Or use QuickTime to export as MP4, then convert MP4 to GIF
-- Save as `dashboard-demo.gif` and replace the link above
 
 *Real-time EEG stress detection dashboard with live brainwave visualization*
 
